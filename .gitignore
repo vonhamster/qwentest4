@@ -1,21 +1,36 @@
 ```
-# Unity-specific ignores
+# Unity specific ignores
 Library/
 Temp/
 Obj/
 Build/
 Logs/
-*.unityproj
+UserSettings/
+
+# Compiled binaries
+*.dll
+*.exe
+*.pdb
+*.meta
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Dependencies
+node_modules/
+Packages/
+
+# Editors
+.vscode/
+.idea/
 *.sln
 *.csproj
 *.user
 *.userprefs
-*.pidb
-*.booproj
-*.svd
-*.meta
-!Assets/Editor/SvgImporterWindow.cs.meta
-!Assets/Scripts/SvgPathParser.cs.meta
-!Assets/Scripts/SvgTextureGenerator.cs.meta
-!Assets/Scripts/SvgTextureGeneratorRuntime.cs.meta
+
+# OS generated files
+.DS_Store
+Thumbs.db
 ```

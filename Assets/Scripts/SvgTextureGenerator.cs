@@ -3,12 +3,23 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Представляет данные о соответствии цветов
+/// Представляет данные о соответствии цветов с координатами центра
 /// </summary>
 [Serializable]
 public class ColorMappingData
 {
-    public Dictionary<string, string> colorMappings = new Dictionary<string, string>();
+    public Dictionary<string, ColorInfo> rgba = new Dictionary<string, ColorInfo>();
+}
+
+/// <summary>
+/// Информация о цвете: оригинальный цвет и координаты центра
+/// </summary>
+[Serializable]
+public class ColorInfo
+{
+    public string color;
+    public float x;
+    public float y;
 }
 
 /// <summary>
@@ -23,14 +34,16 @@ public static class SvgTextureGenerator
     {
         public string pathData;
         public Color32 originalColor;
+        public Vector2 centroid;
     }
 
     /// <summary>
     /// Основная функция генерации текстуры из SVG
     /// </summary>
-    public static Texture2D GenerateTextureFromSvg(string svgContent, int width, int height, out Dictionary<Color32, Color32> colorMapping)
+    public static Texture2D GenerateTextureFromSvg(string svgContent, int width, int height, out Dictionary<Color32, Color32> colorMapping, out Dictionary<Color32, Vector2> centroids)
     {
         colorMapping = new Dictionary<Color32, Color32>();
+        centroids = new Dictionary<Color32, Vector2>();
         
         // Парсим SVG для получения путей и цветов
         List<SvgPathData> paths = ParseSvg(svgContent);
@@ -64,6 +77,7 @@ public static class SvgTextureGenerator
             if (!colorMapping.ContainsKey(color))
             {
                 colorMapping[color] = paths[(int)i].originalColor;
+                centroids[color] = paths[(int)i].centroid;
             }
         }
 
@@ -148,10 +162,14 @@ public static class SvgTextureGenerator
             if (!string.IsNullOrEmpty(pathData))
             {
                 Color32 color = ParseColor(fillColor);
+                List<Vector2> points = SvgPathParser.ParsePath(pathData);
+                Vector2 centroid = CalculateCentroid(points);
+                
                 paths.Add(new SvgPathData
                 {
                     pathData = pathData,
-                    originalColor = color
+                    originalColor = color,
+                    centroid = centroid
                 });
             }
             
@@ -362,9 +380,9 @@ public static class SvgTextureGenerator
     }
 
     /// <summary>
-    /// Сохраняет цветовую карту в JSON формат
+    /// Сохраняет цветовую карту в JSON формат с координатами центра
     /// </summary>
-    public static string SaveColorMappingToJson(Dictionary<Color32, Color32> colorMapping)
+    public static string SaveColorMappingToJson(Dictionary<Color32, Color32> colorMapping, Dictionary<Color32, Vector2> centroids)
     {
         var mappingData = new ColorMappingData();
         
@@ -373,20 +391,90 @@ public static class SvgTextureGenerator
             string textureColor = Color32ToString(kvp.Key);
             string originalColor = Color32ToString(kvp.Value);
             
-            if (!mappingData.colorMappings.ContainsKey(textureColor))
+            if (!mappingData.rgba.ContainsKey(textureColor))
             {
-                mappingData.colorMappings.Add(textureColor, originalColor);
+                Vector2 centroid = Vector2.zero;
+                if (centroids != null && centroids.ContainsKey(kvp.Key))
+                {
+                    centroid = centroids[kvp.Key];
+                }
+                
+                mappingData.rgba.Add(textureColor, new ColorInfo
+                {
+                    color = originalColor,
+                    x = centroid.x,
+                    y = centroid.y
+                });
             }
         }
         
-        // Простая сериализация в JSON
-        return JsonUtility.ToJson(new ColorMappingWrapper { mappings = mappingData.colorMappings }, true);
+        // Сериализация в JSON вручную для правильного формата
+        return SerializeColorMappingData(mappingData);
     }
 
-    [Serializable]
-    private class ColorMappingWrapper
+    /// <summary>
+    /// Сериализует ColorMappingData в JSON формат {"rgba": {...}}
+    /// </summary>
+    private static string SerializeColorMappingData(ColorMappingData data)
     {
-        public Dictionary<string, string> mappings;
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.AppendLine("{");
+        sb.AppendLine("  \"rgba\": {");
+        
+        int count = 0;
+        int totalCount = data.rgba.Count;
+        foreach (var kvp in data.rgba)
+        {
+            sb.Append($"    \"{kvp.Key}\": {{\"color\":\"{kvp.Value.color}\", \"x\":{kvp.Value.x.ToString(System.Globalization.CultureInfo.InvariantCulture)}, \"y\":{kvp.Value.y.ToString(System.Globalization.CultureInfo.InvariantCulture)}}}");
+            if (count < totalCount - 1)
+                sb.Append(",");
+            sb.AppendLine();
+            count++;
+        }
+        
+        sb.AppendLine("  }");
+        sb.Append("}");
+        
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Вычисляет центр масс (центроид) полигона
+    /// </summary>
+    private static Vector2 CalculateCentroid(List<Vector2> points)
+    {
+        if (points == null || points.Count < 3)
+            return Vector2.zero;
+        
+        float cx = 0f, cy = 0f;
+        float area = 0f;
+        
+        for (int i = 0; i < points.Count - 1; i++)
+        {
+            Vector2 p1 = points[i];
+            Vector2 p2 = points[i + 1];
+            
+            float cross = p1.x * p2.y - p2.x * p1.y;
+            area += cross;
+            cx += (p1.x + p2.x) * cross;
+            cy += (p1.y + p2.y) * cross;
+        }
+        
+        area *= 0.5f;
+        
+        if (Mathf.Abs(area) < 0.0001f)
+        {
+            // Если площадь слишком мала, возвращаем среднюю точку
+            Vector2 sum = Vector2.zero;
+            for (int i = 0; i < points.Count; i++)
+                sum += points[i];
+            return sum / points.Count;
+        }
+        
+        cx /= (6f * area);
+        cy /= (6f * area);
+        
+        return new Vector2(cx, cy);
     }
 
     /// <summary>

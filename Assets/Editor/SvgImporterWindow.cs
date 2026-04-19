@@ -49,7 +49,8 @@ public class SvgImporterWindow : EditorWindow
         string svgContent = svgFile.text;
         
         Dictionary<Color32, Color32> colorMapping;
-        Texture2D texture = SvgTextureGenerator.GenerateTextureFromSvg(svgContent, textureWidth, textureHeight, out colorMapping);
+        Dictionary<Color32, Vector2> centroids;
+        Texture2D texture = SvgTextureGenerator.GenerateTextureFromSvg(svgContent, textureWidth, textureHeight, out colorMapping, out centroids);
         
         if (texture == null)
         {
@@ -69,7 +70,7 @@ public class SvgImporterWindow : EditorWindow
         File.WriteAllBytes(texturePath, pngData);
         
         // Сохраняем JSON
-        string jsonContent = SvgTextureGenerator.SaveColorMappingToJson(colorMapping);
+        string jsonContent = SvgTextureGenerator.SaveColorMappingToJson(colorMapping, centroids);
         string jsonPath = Path.Combine(outputFolder, $"{svgFile.name}_colors.json");
         File.WriteAllText(jsonPath, jsonContent);
 
