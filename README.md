@@ -29,7 +29,8 @@ Assets/
 
 3. **Создание JSON карты цветов**
    - Соответствие цветов текстуры оригинальным цветам из SVG
-   - Формат: `{"RRGGBBAA": "оригинальный_цвет", ...}`
+   - Координаты центра (центроид) каждого контура
+   - Формат: `{"rgba": {"RRGGBBAA": {"color": "оригинальный_цвет", "x": 1.5, "y": 2.3}, ...}}`
 
 ## Использование
 
@@ -70,15 +71,17 @@ string svgContent = File.ReadAllText("path/to/file.svg");
 
 // Генерация текстуры
 Dictionary<Color32, Color32> colorMapping;
+Dictionary<Color32, Vector2> centroids;
 Texture2D texture = SvgTextureGenerator.GenerateTextureFromSvg(
     svgContent, 
     1024,  // ширина
     1024,  // высота
-    out colorMapping
+    out colorMapping,
+    out centroids
 );
 
-// Сохранение JSON
-string json = SvgTextureGenerator.SaveColorMappingToJson(colorMapping);
+// Сохранение JSON (с координатами центров)
+string json = SvgTextureGenerator.SaveColorMappingToJson(colorMapping, centroids);
 File.WriteAllText("output.json", json);
 
 // Сохранение текстуры
@@ -96,18 +99,19 @@ File.WriteAllBytes("output.png", pngData);
 ### JSON файл
 ```json
 {
-    "mappings": {
-        "00000000": "FF0000FF",
-        "1A1A1A1A": "00FF00FF",
-        "33333333": "0000FFFF",
-        ...
-    }
+  "rgba": {
+    "00000000": {"color": "FF0000FF", "x": 128.5, "y": 256.3},
+    "1A1A1A1A": {"color": "00FF00FF", "x": 512.0, "y": 128.7},
+    "33333333": {"color": "0000FFFF", "x": 256.2, "y": 384.1}
+  }
 }
 ```
 
 Где:
-- Ключ - цвет на сгенерированной текстуре (формат RRGGBBAA)
-- Значение - оригинальный цвет из SVG (формат RRGGBBAA)
+- Ключ верхнего уровня `rgba` содержит все соответствия
+- Каждый ключ - цвет на сгенерированной текстуре (формат RRGGBBAA)
+- `color` - оригинальный цвет из SVG (формат RRGGBBAA)
+- `x`, `y` - координаты центра масс (центроида) контура
 
 ## Поддерживаемые SVG команды
 
