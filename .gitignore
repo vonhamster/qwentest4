@@ -1,0 +1,21 @@
+```
+# Unity-specific ignores
+Library/
+Temp/
+Obj/
+Build/
+Logs/
+*.unityproj
+*.sln
+*.csproj
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.meta
+!Assets/Editor/SvgImporterWindow.cs.meta
+!Assets/Scripts/SvgPathParser.cs.meta
+!Assets/Scripts/SvgTextureGenerator.cs.meta
+!Assets/Scripts/SvgTextureGeneratorRuntime.cs.meta
+```
